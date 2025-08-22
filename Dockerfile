@@ -22,15 +22,12 @@ WORKDIR /app
 COPY composer.json composer.lock ./
 RUN composer install --prefer-dist --no-interaction --no-scripts --no-progress
 
-# ---------- Stage 3: Runtime (Nginx + PHP-FPM) ----------
-FROM php:8.2-fpm-alpine AS runtime
+# ---------- Stage 3: Runtime (PHP + built-in server) ----------
+FROM php:8.2-cli-alpine AS runtime
 
 # Install system dependencies and PHP extensions
 RUN apk add --no-cache \
-	nginx \
-	supervisor \
 	bash \
-	gettext \
 	icu-dev \
 	libzip-dev \
 	oniguruma-dev \
@@ -38,6 +35,7 @@ RUN apk add --no-cache \
 	libjpeg-turbo-dev \
 	libpng-dev \
 	postgresql-dev \
+	$PHPIZE_DEPS \
 	&& docker-php-ext-configure gd --with-freetype --with-jpeg \
 	&& docker-php-ext-install -j$(nproc) \
 		pdo \
@@ -47,7 +45,8 @@ RUN apk add --no-cache \
 		zip \
 		gd \
 		intl \
-		opcache
+		opcache \
+	&& apk del $PHPIZE_DEPS
 
 ENV COMPOSER_ALLOW_SUPERUSER=1 \
 	PHP_OPCACHE_VALIDATE_TIMESTAMPS=0 \
@@ -78,57 +77,18 @@ display_errors=0\n\
 log_errors=1\n\
 " > /usr/local/etc/php/conf.d/app.ini
 
-# Nginx config template (runtime PORT substitution via envsubst)
-RUN mkdir -p /run/nginx /var/log/nginx /etc/nginx/conf.d \
-	&& cat > /etc/nginx/nginx.conf.template <<'NGINX_CONF'
-events { worker_connections 1024; }
-http {
-    include       /etc/nginx/mime.types;
-    default_type  application/octet-stream;
-    sendfile        on;
-    keepalive_timeout  65;
-    server {
-        listen ${PORT};
-        server_name _;
-        root /var/www/html/public;
-        index index.php index.html;
-        location / {
-            try_files $uri $uri/ /index.php?$query_string;
-        }
-        location ~ \.php$ {
-            include fastcgi_params;
-            fastcgi_pass 127.0.0.1:9000;
-            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-            fastcgi_param DOCUMENT_ROOT $document_root;
-            fastcgi_index index.php;
-        }
-        location ~ /\.(?!well-known).* { deny all; }
-        location ~* \.(?:css|js|jpg|jpeg|gif|png|svg|ico)$ {
-            expires 7d;
-            add_header Cache-Control "public, immutable";
-        }
-    }
-}
-NGINX_CONF
-
-# Supervisor config to run php-fpm + nginx
-RUN mkdir -p /etc/supervisor/conf.d \
-	&& printf "[supervisord]\n" > /etc/supervisor/conf.d/supervisord.conf \
-	&& printf "nodaemon=true\n\n" >> /etc/supervisor/conf.d/supervisord.conf \
-	&& printf "[program:php-fpm]\ncommand=php-fpm -F\nautostart=true\nautorestart=true\npriority=5\n\n" >> /etc/supervisor/conf.d/supervisord.conf \
-	&& printf "[program:nginx]\ncommand=nginx -g 'daemon off;'\nautostart=true\nautorestart=true\npriority=10\n" >> /etc/supervisor/conf.d/supervisord.conf
-
 # Permissions for storage and cache
 RUN addgroup -g 1000 -S www \
 	&& adduser -u 1000 -S www -G www \
 	&& chown -R www:www /var/www/html \
 	&& chmod -R ug+rwx storage bootstrap/cache
 
-EXPOSE 80
-
 # Render provides PORT. Default to 8080 locally if not set.
 ENV PORT=8080
 
-# Generate nginx.conf from template with runtime PORT and start processes
-CMD sh -c "envsubst '\$PORT' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf"
+# Expose the port
+EXPOSE 8080
+
+# Start PHP's built-in server (more reliable for debugging)
+CMD php -S 0.0.0.0:$PORT -t public public/index.php
 
