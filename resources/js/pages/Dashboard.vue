@@ -30,6 +30,11 @@ const breadcrumbs: BreadcrumbItem[] = [
             </div>
             <div class="relative min-h-[100vh] flex-1 rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border">
                 <PlaceholderPattern />
+                <div class="absolute inset-0 z-10 flex items-center justify-center">
+                    <p class="text-neutral-700 dark:text-neutral-200 text-xl font-semibold">
+                        Welcome to your dashboard again
+                    </p>
+                </div>
             </div>
         </div>
     </AppLayout>
