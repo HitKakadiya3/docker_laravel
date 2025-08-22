@@ -1,0 +1,117 @@
+services:
+  - type: web
+    name: laravel-web
+    env: docker
+    plan: free
+    autoDeploy: true
+    rootDir: .
+    buildCommand: ""
+    startCommand: ""
+    dockerContext: .
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_URL
+        value: https://REPLACE_WITH_YOUR_ONRENDER_URL
+      - key: LOG_LEVEL
+        value: info
+      - key: FILESYSTEM_DISK
+        value: public
+      - key: SESSION_DRIVER
+        value: file
+      - key: CACHE_DRIVER
+        value: file
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: APP_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: laravel-db
+          property: connectionString
+    healthCheckPath: /
+    postDeploy:
+      - php artisan key:generate --show
+      - php artisan migrate --force
+      - php artisan storage:link || true
+    disk:
+      name: storage
+      mountPath: /var/www/html/storage
+      sizeGB: 1
+
+  - type: worker
+    name: laravel-worker
+    env: docker
+    plan: free
+    autoDeploy: true
+    dockerContext: .
+    dockerfilePath: ./Dockerfile
+    startCommand: php artisan queue:work --sleep=3 --tries=3 --timeout=90
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_URL
+        value: https://REPLACE_WITH_YOUR_ONRENDER_URL
+      - key: LOG_LEVEL
+        value: info
+      - key: FILESYSTEM_DISK
+        value: public
+      - key: SESSION_DRIVER
+        value: file
+      - key: CACHE_DRIVER
+        value: file
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: APP_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: laravel-db
+          property: connectionString
+
+  - type: cron
+    name: laravel-scheduler
+    env: docker
+    plan: free
+    schedule: "* * * * *"
+    dockerContext: .
+    dockerfilePath: ./Dockerfile
+    command: php artisan schedule:run
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_URL
+        value: https://REPLACE_WITH_YOUR_ONRENDER_URL
+      - key: LOG_LEVEL
+        value: info
+      - key: FILESYSTEM_DISK
+        value: public
+      - key: SESSION_DRIVER
+        value: file
+      - key: CACHE_DRIVER
+        value: file
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: APP_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: laravel-db
+          property: connectionString
+
+databases:
+  - name: laravel-db
+    plan: free
