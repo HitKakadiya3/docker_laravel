@@ -90,5 +90,5 @@ ENV PORT=8080
 EXPOSE 8080
 
 # Start PHP's built-in server (more reliable for debugging)
-CMD php -S 0.0.0.0:$PORT -t public public/index.php
+CMD php -S 0.0.0.0:$PORT -t public public/index.php 
 
