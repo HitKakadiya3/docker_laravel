@@ -72,6 +72,7 @@ RUN apk add --no-cache \
 	nginx \
 	supervisor \
 	bash \
+	gettext \
 	icu-dev \
 	libzip-dev \
 	oniguruma-dev \
@@ -121,7 +122,7 @@ log_errors=1\n\
 
 # Nginx config (use here-doc to preserve $ variables)
 RUN mkdir -p /run/nginx /var/log/nginx /etc/nginx/conf.d \
-	&& cat > /etc/nginx/nginx.conf <<'NGINX_CONF'
+	&& cat > /etc/nginx/nginx.conf.template <<'NGINX_CONF'
 events { worker_connections 1024; }
 http {
     include       /etc/nginx/mime.types;
@@ -129,7 +130,7 @@ http {
     sendfile        on;
     keepalive_timeout  65;
     server {
-        listen 80;
+        listen ${PORT};
         server_name _;
         root /var/www/html/public;
         index index.php index.html;
@@ -167,5 +168,7 @@ RUN addgroup -g 1000 -S www \
 
 EXPOSE 80
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+ENV PORT=8080
+
+CMD sh -c "envsubst '\$PORT' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf"
 
