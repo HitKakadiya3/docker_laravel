@@ -34,7 +34,7 @@ services:
         fromDatabase:
           name: laravel-db
           property: connectionString
-    healthCheckPath: /
+    healthCheckPath: /health
     postDeploy:
       - php artisan key:generate --show
       - php artisan migrate --force

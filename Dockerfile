@@ -1,43 +1,3 @@
-# 1) Build PHP dependencies
-FROM composer:2 AS vendor
-WORKDIR /app
-COPY composer.json composer.lock ./
-RUN composer install --no-dev --prefer-dist --no-progress --no-interaction
-COPY . ./
-RUN composer dump-autoload -o
-
-# 2) Runtime with PHP-FPM + Caddy
-FROM php:8.2-fpm-alpine AS app
-WORKDIR /var/www/html
-
-# System deps
-RUN apk add --no-cache bash curl icu-libs icu-data-full libpq \
-    oniguruma libzip zlib
-
-# PHP extensions
-RUN apk add --no-cache icu-dev libzip-dev oniguruma-dev postgresql-dev $PHPIZE_DEPS && \
-    docker-php-ext-configure intl && \
-    docker-php-ext-install intl mbstring pdo pdo_pgsql zip opcache && \
-    apk del $PHPIZE_DEPS icu-dev libzip-dev oniguruma-dev postgresql-dev
-
-# Copy app
-COPY --from=vendor /app /var/www/html
-
-# Caddy for static + PHP-FPM proxy
-RUN apk add --no-cache caddy
-
-# Caddyfile
-RUN printf '{\n    auto_https off\n}\n:8080 {\n    root * /var/www/html/public\n    encode zstd gzip\n    php_fastcgi localhost:9000\n    file_server\n}\n' > /etc/caddy/Caddyfile
-
-# Permissions
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
-
-# Expose Caddy port
-EXPOSE 8080
-
-# Start both PHP-FPM and Caddy
-CMD php-fpm -D && caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
-
 # ---------- Stage 1: Frontend build (Vite) ----------
 FROM node:20-alpine AS frontend
 
@@ -55,14 +15,12 @@ RUN mkdir -p public
 # Build assets (outputs to public/build via laravel-vite-plugin)
 RUN npm run build
 
-
 # ---------- Stage 2: Composer vendor (no dev, no scripts) ----------
 FROM composer:2 AS vendor
 
 WORKDIR /app
 COPY composer.json composer.lock ./
 RUN composer install --prefer-dist --no-interaction --no-scripts --no-progress
-
 
 # ---------- Stage 3: Runtime (Nginx + PHP-FPM) ----------
 FROM php:8.2-fpm-alpine AS runtime
@@ -120,7 +78,7 @@ display_errors=0\n\
 log_errors=1\n\
 " > /usr/local/etc/php/conf.d/app.ini
 
-# Nginx config (use here-doc to preserve $ variables)
+# Nginx config template (runtime PORT substitution via envsubst)
 RUN mkdir -p /run/nginx /var/log/nginx /etc/nginx/conf.d \
 	&& cat > /etc/nginx/nginx.conf.template <<'NGINX_CONF'
 events { worker_connections 1024; }
@@ -168,7 +126,9 @@ RUN addgroup -g 1000 -S www \
 
 EXPOSE 80
 
+# Render provides PORT. Default to 8080 locally if not set.
 ENV PORT=8080
 
+# Generate nginx.conf from template with runtime PORT and start processes
 CMD sh -c "envsubst '\$PORT' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf"
 
