@@ -15,7 +15,7 @@ services:
       - key: APP_DEBUG
         value: "false"
       - key: APP_URL
-        value: https://REPLACE_WITH_YOUR_ONRENDER_URL
+        value: https://docker-laravel-qp4o.onrender.com
       - key: LOG_LEVEL
         value: info
       - key: FILESYSTEM_DISK
@@ -64,7 +64,7 @@ services:
       - key: APP_DEBUG
         value: "false"
       - key: APP_URL
-        value: https://REPLACE_WITH_YOUR_ONRENDER_URL
+        value: https://docker-laravel-qp4o.onrender.com
       - key: LOG_LEVEL
         value: info
       - key: FILESYSTEM_DISK
@@ -104,7 +104,7 @@ services:
       - key: APP_DEBUG
         value: "false"
       - key: APP_URL
-        value: https://REPLACE_WITH_YOUR_ONRENDER_URL
+        value: https://docker-laravel-qp4o.onrender.com
       - key: LOG_LEVEL
         value: info
       - key: FILESYSTEM_DISK
