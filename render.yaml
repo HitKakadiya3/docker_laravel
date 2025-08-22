@@ -30,10 +30,16 @@ services:
         value: pgsql
       - key: APP_KEY
         sync: false
-      - key: DATABASE_URL
-        fromDatabase:
-          name: laravel-db
-          property: connectionString
+      - key: DB_HOST
+        value: dpg-d2k5547diees73dahfmg-a
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_DATABASE
+        value: test_db_2g3m
+      - key: DB_USERNAME
+        value: test_db_2g3m_user
+      - key: DB_PASSWORD
+        sync: false
     healthCheckPath: /health
     postDeploy:
       - php artisan key:generate --show
@@ -73,10 +79,16 @@ services:
         value: pgsql
       - key: APP_KEY
         sync: false
-      - key: DATABASE_URL
-        fromDatabase:
-          name: laravel-db
-          property: connectionString
+      - key: DB_HOST
+        value: dpg-d2k5547diees73dahfmg-a
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_DATABASE
+        value: test_db_2g3m
+      - key: DB_USERNAME
+        value: test_db_2g3m_user
+      - key: DB_PASSWORD
+        sync: false
 
   - type: cron
     name: laravel-scheduler
@@ -107,11 +119,13 @@ services:
         value: pgsql
       - key: APP_KEY
         sync: false
-      - key: DATABASE_URL
-        fromDatabase:
-          name: laravel-db
-          property: connectionString
-
-databases:
-  - name: laravel-db
-    plan: free
+      - key: DB_HOST
+        value: dpg-d2k5547diees73dahfmg-a
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_DATABASE
+        value: test_db_2g3m
+      - key: DB_USERNAME
+        value: test_db_2g3m_user
+      - key: DB_PASSWORD
+        sync: false
