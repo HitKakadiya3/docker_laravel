@@ -1,0 +1,39 @@
+FROM php:8.2-cli
+
+# Install system deps and PHP extensions needed by Laravel
+RUN apt-get update && apt-get install -y \
+    git unzip libpng-dev libjpeg62-turbo-dev libfreetype6-dev libonig-dev libxml2-dev zip libzip-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) pdo_mysql mbstring bcmath gd exif pcntl zip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /app
+
+# Copy application source
+COPY . .
+
+# Install PHP dependencies (no dev)
+RUN composer install --no-dev --optimize-autoloader --no-interaction \
+    && php artisan config:clear || true \
+    && php artisan route:clear || true \
+    && php artisan view:clear || true
+
+# Ensure storage permissions
+RUN chown -R www-data:www-data /app \
+    && chmod -R 775 storage bootstrap/cache
+
+# Render provides PORT
+ENV PORT=10000
+
+EXPOSE 10000
+
+# Copy entrypoint
+COPY docker/render-entrypoint.sh /usr/local/bin/render-entrypoint
+RUN chmod +x /usr/local/bin/render-entrypoint
+
+CMD ["/usr/local/bin/render-entrypoint"]
+
+
