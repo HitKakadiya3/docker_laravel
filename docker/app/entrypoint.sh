@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd /var/www
+
+# Ensure permissions for Laravel writable dirs
+chown -R www-data:www-data storage bootstrap/cache || true
+chmod -R ug+rwx storage bootstrap/cache || true
+
+# Create .env if missing
+if [ ! -f .env ]; then
+  if [ -f .env.example ]; then
+    cp .env.example .env
+  else
+    touch .env
+  fi
+fi
+
+# Ensure APP_URL and DB settings are set based on container env
+grep -q '^APP_URL=' .env && sed -i 's#^APP_URL=.*#APP_URL='"${APP_URL:-http://localhost:8080}"'#' .env || echo "APP_URL=${APP_URL:-http://localhost:8080}" >> .env
+grep -q '^DB_CONNECTION=' .env || echo "DB_CONNECTION=${DB_CONNECTION:-mysql}" >> .env
+grep -q '^DB_HOST=' .env && sed -i 's#^DB_HOST=.*#DB_HOST='"${DB_HOST:-db}"'#' .env || echo "DB_HOST=${DB_HOST:-db}" >> .env
+grep -q '^DB_PORT=' .env && sed -i 's#^DB_PORT=.*#DB_PORT='"${DB_PORT:-3306}"'#' .env || echo "DB_PORT=${DB_PORT:-3306}" >> .env
+grep -q '^DB_DATABASE=' .env && sed -i 's#^DB_DATABASE=.*#DB_DATABASE='"${DB_DATABASE:-laravel}"'#' .env || echo "DB_DATABASE=${DB_DATABASE:-laravel}" >> .env
+grep -q '^DB_USERNAME=' .env && sed -i 's#^DB_USERNAME=.*#DB_USERNAME='"${DB_USERNAME:-laravel}"'#' .env || echo "DB_USERNAME=${DB_USERNAME:-laravel}" >> .env
+grep -q '^DB_PASSWORD=' .env && sed -i 's#^DB_PASSWORD=.*#DB_PASSWORD='"${DB_PASSWORD:-laravel}"'#' .env || echo "DB_PASSWORD=${DB_PASSWORD:-laravel}" >> .env
+
+# Install dependencies when bind-mounted without vendor
+if [ ! -d vendor ]; then
+  composer install --no-interaction --prefer-dist
+fi
+
+# Generate app key if missing
+if ! grep -q "APP_KEY=" .env 2>/dev/null || grep -q "^APP_KEY=\s*$" .env; then
+  php artisan key:generate --force
+fi
+
+php artisan config:clear || true
+php artisan cache:clear || true
+
+# Create storage symlink if missing
+if [ ! -L public/storage ]; then
+  php artisan storage:link || true
+fi
+
+exec "$@"
+
+
