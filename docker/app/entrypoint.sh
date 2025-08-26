@@ -38,6 +38,23 @@ fi
 php artisan config:clear || true
 php artisan cache:clear || true
 
+# Optionally run database migrations on container start
+if [ "${MIGRATE_ON_START:-false}" = "true" ]; then
+  echo "Running database migrations (MIGRATE_ON_START=true)"
+  attempts=0
+  max_attempts=${MIGRATE_MAX_ATTEMPTS:-20}
+  sleep_seconds=${MIGRATE_RETRY_SECONDS:-3}
+  until php artisan migrate --force; do
+    attempts=$((attempts+1))
+    if [ "$attempts" -ge "$max_attempts" ]; then
+      echo "Migrations failed after $attempts attempts"
+      break
+    fi
+    echo "Migration attempt $attempts failed. Retrying in ${sleep_seconds}s..."
+    sleep "$sleep_seconds"
+  done
+fi
+
 # Create storage symlink if missing
 if [ ! -L public/storage ]; then
   php artisan storage:link || true
