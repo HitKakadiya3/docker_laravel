@@ -16,14 +16,37 @@ if [ ! -f .env ]; then
   fi
 fi
 
-# Ensure APP_URL and DB settings are set based on container env
-grep -q '^APP_URL=' .env && sed -i 's#^APP_URL=.*#APP_URL='"${APP_URL:-http://localhost:8080}"'#' .env || echo "APP_URL=${APP_URL:-http://localhost:8080}" >> .env
-grep -q '^DB_CONNECTION=' .env || echo "DB_CONNECTION=${DB_CONNECTION:-mysql}" >> .env
-grep -q '^DB_HOST=' .env && sed -i 's#^DB_HOST=.*#DB_HOST='"${DB_HOST:-db}"'#' .env || echo "DB_HOST=${DB_HOST:-db}" >> .env
-grep -q '^DB_PORT=' .env && sed -i 's#^DB_PORT=.*#DB_PORT='"${DB_PORT:-3306}"'#' .env || echo "DB_PORT=${DB_PORT:-3306}" >> .env
-grep -q '^DB_DATABASE=' .env && sed -i 's#^DB_DATABASE=.*#DB_DATABASE='"${DB_DATABASE:-laravel}"'#' .env || echo "DB_DATABASE=${DB_DATABASE:-laravel}" >> .env
-grep -q '^DB_USERNAME=' .env && sed -i 's#^DB_USERNAME=.*#DB_USERNAME='"${DB_USERNAME:-laravel}"'#' .env || echo "DB_USERNAME=${DB_USERNAME:-laravel}" >> .env
-grep -q '^DB_PASSWORD=' .env && sed -i 's#^DB_PASSWORD=.*#DB_PASSWORD='"${DB_PASSWORD:-laravel}"'#' .env || echo "DB_PASSWORD=${DB_PASSWORD:-laravel}" >> .env
+# Helper to set or update a key in .env only when a non-empty ENV var is provided
+set_env_var_if_provided() {
+  local key="$1"
+  local value="$2"
+  if [ -n "${value}" ]; then
+    if grep -q "^${key}=" .env; then
+      sed -i "s#^${key}=.*#${key}=${value}#" .env
+    else
+      echo "${key}=${value}" >> .env
+    fi
+  fi
+}
+
+# Ensure APP_URL and DB settings are set from container env ONLY if provided; otherwise preserve existing .env
+if ! grep -q '^APP_URL=' .env; then
+  echo "APP_URL=${APP_URL:-http://localhost:8080}" >> .env
+else
+  set_env_var_if_provided APP_URL "${APP_URL}"
+fi
+
+if ! grep -q '^DB_CONNECTION=' .env; then
+  echo "DB_CONNECTION=${DB_CONNECTION:-mysql}" >> .env
+else
+  set_env_var_if_provided DB_CONNECTION "${DB_CONNECTION}"
+fi
+
+set_env_var_if_provided DB_HOST "${DB_HOST}"
+set_env_var_if_provided DB_PORT "${DB_PORT}"
+set_env_var_if_provided DB_DATABASE "${DB_DATABASE}"
+set_env_var_if_provided DB_USERNAME "${DB_USERNAME}"
+set_env_var_if_provided DB_PASSWORD "${DB_PASSWORD}"
 
 # Install dependencies when bind-mounted without vendor
 if [ ! -d vendor ]; then
