@@ -117,9 +117,9 @@ FROM php:8.2-fpm
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    git unzip dos2unix libpng-dev libjpeg62-turbo-dev libfreetype6-dev libonig-dev libxml2-dev zip libzip-dev \
+    git unzip dos2unix libpng-dev libjpeg62-turbo-dev libfreetype6-dev libonig-dev libxml2-dev zip libzip-dev postgresql-client libpq-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) pdo_mysql mbstring bcmath gd exif pcntl zip
+    && docker-php-ext-install -j$(nproc) pdo_mysql pdo_pgsql mbstring bcmath gd exif pcntl zip
 
 # Install Composer in the final image for runtime installs when bind-mounting source
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
