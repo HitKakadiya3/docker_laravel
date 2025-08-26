@@ -41,6 +41,11 @@ php artisan cache:clear || true
 # Optionally run database migrations on container start
 if [ "${MIGRATE_ON_START:-false}" = "true" ]; then
   echo "Running database migrations (MIGRATE_ON_START=true)"
+  # If database cache store is configured, ensure cache table migration exists
+  if php -r 'exit(getenv("CACHE_STORE")==="database"?0:1);'; then
+    echo "CACHE_STORE=database detected; ensuring cache table migration exists"
+    php artisan cache:table || true
+  fi
   attempts=0
   max_attempts=${MIGRATE_MAX_ATTEMPTS:-20}
   sleep_seconds=${MIGRATE_RETRY_SECONDS:-3}
