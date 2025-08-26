@@ -107,7 +107,6 @@ COPY . .
 
 # Install dependencies (no dev for production)
 RUN composer install \
-    --no-dev \
     --optimize-autoloader \
     --no-interaction
 
