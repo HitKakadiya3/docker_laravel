@@ -1,27 +1,27 @@
 services:
   - type: web
-    name: laravel-web
+    name: laravel-app
     env: docker
-    plan: free
-    autoDeploy: true
-    rootDir: .
-    buildCommand: ""
-    startCommand: ""
-    dockerContext: .
     dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
     envVars:
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
-        value: "false"
-      - key: APP_URL
-        value: https://docker-laravel-1.onrender.com
-      - key: LOG_LEVEL
-        value: info
-      - key: FILESYSTEM_DISK
-        value: public
-      - key: SESSION_DRIVER
-        value: file
+        value: false
+      - key: APP_KEY
+        generateValue: true
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DATABASE_URL
+        fromDatabase:
+          name: laravel-db
+          property: connectionString
+
+databases:
+  - name: laravel-db
+    databaseName: laravel
+    ipAllowList: []
       - key: CACHE_STORE
         value: file
       - key: CACHE_DRIVER
@@ -46,6 +46,9 @@ services:
     postDeploy:
       - php artisan key:generate --show
       - php artisan migrate --force
+      - php artisan cache:table || true
+      - php artisan session:table || true
+      - php artisan cache:clear || true
       - php artisan storage:link || true
     disk:
       name: storage
